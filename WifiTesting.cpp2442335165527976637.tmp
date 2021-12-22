@@ -1,0 +1,2076 @@
+
+#include <Arduino.h>
+#include <ESP8266httpUpdate.h>
+#include <ESP8266WiFi.h>
+#include <EEPROM.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266WiFiMulti.h>
+#include <WiFiClient.h>
+#include "PinAllocation.h"
+#include "LEDToggle.h"
+#include "WifiTesting.h"
+#include <PubSubClient.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <Wire.h>                   // for I2C communication
+#include <RTClib.h> 
+#include <Espalexa.h>
+
+
+Espalexa espalexa;
+RTC_DS1307 rtc;
+//**************************************************************MQTT TESTING******************************************//
+
+int i = 0;
+int j=0;
+char arr1[200];
+char arr2[200];
+char arr3[200];
+char arr4[200];
+char arr5[200];
+char Buffer2[10];
+
+// MQTT Broker Credentials
+const char *mqtt_broker = "18.118.98.89";
+const char *mqtt_username = "admin";
+const char *mqtt_password = "public";
+const int mqtt_port = 1883;
+
+
+
+int Device1_Status = 0;
+int Device2_Status = 0;
+int Device3_Status = 0;
+int Device4_Status = 0;
+int Device5_Status = 0;
+int Device6_Status = 0;
+int Device7_Status = 0;
+int Device8_Status = 0;
+int Device9_Status = 0;
+int Device10_Status = 0;
+int Device11_Status = 0;
+int Device12_Status = 0;
+
+WiFiClient ApsisClient;
+PubSubClient ApsisMQTTClient(ApsisClient);
+String Devicemac = WiFi.macAddress();
+
+
+
+// RTC function 
+void fnupdateRTC();
+void fnRTC_Read();
+
+
+int fnEEPROMTimeToInteger(unsigned char uchLocation);
+
+
+String strDevice1_Topic = "apsis/migro/" + Devicemac + "/1";
+String strDevice2_Topic = "apsis/migro/" + Devicemac + "/2";
+String strDevice3_Topic = "apsis/migro/" + Devicemac + "/3";
+String strDevice4_Topic = "apsis/migro/" + Devicemac + "/4";
+String strDevice5_Topic = "apsis/migro/" + Devicemac + "/5";
+String strDevice6_Topic = "apsis/migro/" + Devicemac + "/6";
+String strDevice7_Topic = "apsis/migro/" + Devicemac + "/7";
+String strDevice8_Topic = "apsis/migro/" + Devicemac + "/8";
+String strDevice9_Topic = "apsis/migro/" + Devicemac + "/9";
+String strDevice10_Topic = "apsis/migro/" + Devicemac + "/10";
+String strDevice11_Topic = "apsis/migro/" + Devicemac + "/11";
+String strDevice12_Topic = "apsis/migro/" + Devicemac + "/12";
+
+String strDevice1TimeSchedule_Topic = "apsis/migro/" + Devicemac + "/TimeDev1";
+String strDevice2TimeSchedule_Topic = "apsis/migro/" + Devicemac + "/TimeDev2";
+String strDevice3TimeSchedule_Topic = "apsis/migro/" + Devicemac + "/TimeDev3";
+String strDevice4TimeSchedule_Topic = "apsis/migro/" + Devicemac + "/TimeDev4";
+
+String strDeviceSendStatus_Topic = "apsis/migro/" + Devicemac + "/SendStatus";
+String strDeviceGetStatus_Topic = "apsis/migro/" + Devicemac + "/GetStatus";
+String strDeviceUpdateStatus_Topic = "apsis/migro/" + Devicemac + "/UpdateStatus";
+String strDeviceONOFFStatus_Topic = "apsis/migro/" + Devicemac + "/ONOFFStatus";
+String strRTCUpdate_Topic = "apsis/migro/" + Devicemac + "/RTCUpdate";
+
+const char *Device1_Topic = strDevice1_Topic.c_str();
+const char *Device2_Topic = strDevice2_Topic.c_str();
+const char *Device3_Topic = strDevice3_Topic.c_str();
+const char *Device4_Topic = strDevice4_Topic.c_str();
+const char *Device5_Topic = strDevice5_Topic.c_str();
+const char *Device6_Topic = strDevice6_Topic.c_str();
+const char *Device7_Topic = strDevice7_Topic.c_str();
+const char *Device8_Topic = strDevice8_Topic.c_str();
+const char *Device9_Topic = strDevice9_Topic.c_str();
+const char *Device10_Topic = strDevice10_Topic.c_str();
+const char *Device11_Topic = strDevice11_Topic.c_str();
+const char *Device12_Topic = strDevice12_Topic.c_str();
+const char *Device1TimeSchedule_Topic = strDevice1TimeSchedule_Topic.c_str();
+const char *Device2TimeSchedule_Topic = strDevice2TimeSchedule_Topic.c_str();
+const char *Device3TimeSchedule_Topic = strDevice3TimeSchedule_Topic.c_str();
+const char *Device4TimeSchedule_Topic = strDevice4TimeSchedule_Topic.c_str();
+
+const char *DeviceSendStatus_Topic = strDeviceSendStatus_Topic.c_str();
+const char *DeviceGetStatus_Topic = strDeviceGetStatus_Topic.c_str();
+const char *DeviceUpdateStatus_Topic = strDeviceUpdateStatus_Topic.c_str();
+const char *DeviceONOFFStatus_Topic = strDeviceONOFFStatus_Topic.c_str();
+const char *RTCUpdate_Topic = strRTCUpdate_Topic.c_str();
+
+
+
+ /*D1S1TimeToIntegerValueON= fnEEPROMTimeToInteger(0); // Device 1 Set 1 on
+  //Serial.println("D1S1TimeToIntegerValueON");Serial.println(D1S1TimeToIntegerValueON);
+  D1S1TimeToIntegerValueOFF= fnEEPROMTimeToInteger(1); // Device 1 set 1 off
+  //Serial.println("D1S1TimeToIntegerValueOFF");Serial.println(D1S1TimeToIntegerValueOFF);
+  D1S2TimeToIntegerValueON= fnEEPROMTimeToInteger(2); // Device 1 Set 2 on
+  //Serial.println("D1S2TimeToIntegerValueON");Serial.println(D1S2TimeToIntegerValueON);
+  D1S2TimeToIntegerValueOFF= fnEEPROMTimeToInteger(3); // Device 1 set 2 off
+  //Serial.println("D1S2TimeToIntegerValueOFF");Serial.println(D1S2TimeToIntegerValueOFF);
+  D1S3TimeToIntegerValueON= fnEEPROMTimeToInteger(4); // Device 1 Set 3 on
+  //Serial.println("D1S3TimeToIntegerValueON");Serial.println(D1S3TimeToIntegerValueON);
+  D1S3TimeToIntegerValueOFF= fnEEPROMTimeToInteger(5); // Device 1 set 3 off
+  //Serial.println("D1S3TimeToIntegerValueOFF");Serial.println(D1S3TimeToIntegerValueOFF);
+
+  D2S1TimeToIntegerValueON= fnEEPROMTimeToInteger(6); // Device 2 Set 1 on
+  //Serial.println("D2S1TimeToIntegerValueON");Serial.println(D2S1TimeToIntegerValueON);
+  D2S1TimeToIntegerValueOFF= fnEEPROMTimeToInteger(7); // Device 2 set 1 off
+  //Serial.println("D2S1TimeToIntegerValueOFF");Serial.println(D2S1TimeToIntegerValueOFF);
+  D2S2TimeToIntegerValueON= fnEEPROMTimeToInteger(8); // Device 2 Set 2 on
+  //Serial.println("D2S2TimeToIntegerValueON");Serial.println(D2S2TimeToIntegerValueON);
+  D2S2TimeToIntegerValueOFF= fnEEPROMTimeToInteger(9); // Device 2 set 2 off
+  //Serial.println("D2S2TimeToIntegerValueOFF");Serial.println(D2S2TimeToIntegerValueOFF);
+  D2S3TimeToIntegerValueON= fnEEPROMTimeToInteger(10); // Device 2 Set 3 on
+  //Serial.println("D2S3TimeToIntegerValueON");Serial.println(D2S3TimeToIntegerValueON);
+  D2S3TimeToIntegerValueOFF= fnEEPROMTimeToInteger(11); // Device 2 set 3 off
+  //Serial.println("D2S3TimeToIntegerValueOFF");Serial.println(D2S3TimeToIntegerValueOFF);
+
+  D3S1TimeToIntegerValueON= fnEEPROMTimeToInteger(12); // Device 3 Set 1 on
+  //Serial.println("D3S1TimeToIntegerValueON");Serial.println(D3S1TimeToIntegerValueON);
+  D3S1TimeToIntegerValueOFF= fnEEPROMTimeToInteger(13); // Device 3 set 1 off
+  //Serial.println("D3S1TimeToIntegerValueOFF");Serial.println(D3S1TimeToIntegerValueOFF);
+  D3S2TimeToIntegerValueON= fnEEPROMTimeToInteger(14); // Device 3 Set 2 on
+  //Serial.println("D3S2TimeToIntegerValueON");Serial.println(D3S2TimeToIntegerValueON);
+  D3S2TimeToIntegerValueOFF= fnEEPROMTimeToInteger(15); // Device 3 set 2 off
+  //Serial.println("D3S2TimeToIntegerValueOFF");Serial.println(D3S2TimeToIntegerValueOFF);
+  D3S3TimeToIntegerValueON= fnEEPROMTimeToInteger(16); // Device 3 Set 3 on
+  //Serial.println("D3S3TimeToIntegerValueON");Serial.println(D3S3TimeToIntegerValueON);
+  D3S3TimeToIntegerValueOFF= fnEEPROMTimeToInteger(17); // Device 3 set 3 off
+  //Serial.println("D3S3TimeToIntegerValueOFF");Serial.println(D3S3TimeToIntegerValueOFF);
+
+  D4S1TimeToIntegerValueON= fnEEPROMTimeToInteger(18); // Device 4 Set 1 on
+  //Serial.println("D4S1TimeToIntegerValueON");Serial.println(D4S1TimeToIntegerValueON);
+  D4S1TimeToIntegerValueOFF= fnEEPROMTimeToInteger(19); // Device 4 set 1 off
+  //Serial.println("D4S1TimeToIntegerValueOFF");Serial.println(D4S1TimeToIntegerValueOFF);
+  D4S2TimeToIntegerValueON= fnEEPROMTimeToInteger(20); // Device 4 Set 2 on
+  //Serial.println("D4S2TimeToIntegerValueON");Serial.println(D4S2TimeToIntegerValueON);
+  D4S2TimeToIntegerValueOFF= fnEEPROMTimeToInteger(21); // Device 4 set 2 off
+  //Serial.println("D4S2TimeToIntegerValueOFF");Serial.println(D4S2TimeToIntegerValueOFF);
+  D4S3TimeToIntegerValueON= fnEEPROMTimeToInteger(22); // Device 4 Set 3 on
+  //Serial.println("D4S3TimeToIntegerValueON");Serial.println(D4S3TimeToIntegerValueON);
+  D4S3TimeToIntegerValueOFF= fnEEPROMTimeToInteger(23); // Device 4 set 3 off
+  //Serial.println("D4S3TimeToIntegerValueOFF");Serial.println(D4S3TimeToIntegerValueOFF);*/
+
+
+// for GMT time fetching
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+
+//Week Days
+String weekDays[7]={"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+//Month names
+String months[12]={"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+
+
+
+
+void fnMQTTConnectWithDeviceTopic(void)
+{
+if (WiFi.status() == WL_CONNECTED)
+  {
+    FirmwareUpdate();
+    MQTTConnect();
+    
+    ApsisMQTTClient.subscribe(Device1_Topic);
+    ApsisMQTTClient.subscribe(Device2_Topic);
+    ApsisMQTTClient.subscribe(Device3_Topic);
+    ApsisMQTTClient.subscribe(Device4_Topic);
+    ApsisMQTTClient.subscribe(Device5_Topic);
+    ApsisMQTTClient.subscribe(Device6_Topic);
+    ApsisMQTTClient.subscribe(Device7_Topic);
+    ApsisMQTTClient.subscribe(Device8_Topic);
+    ApsisMQTTClient.subscribe(Device9_Topic);
+    ApsisMQTTClient.subscribe(Device10_Topic);
+    ApsisMQTTClient.subscribe(Device11_Topic);
+    ApsisMQTTClient.subscribe(Device12_Topic);
+    ApsisMQTTClient.subscribe(Device1TimeSchedule_Topic);
+    ApsisMQTTClient.subscribe(Device2TimeSchedule_Topic);
+    ApsisMQTTClient.subscribe(Device3TimeSchedule_Topic);
+    ApsisMQTTClient.subscribe(Device4TimeSchedule_Topic);
+    ApsisMQTTClient.subscribe(DeviceGetStatus_Topic);
+    ApsisMQTTClient.subscribe(DeviceUpdateStatus_Topic);
+    ApsisMQTTClient.subscribe(DeviceONOFFStatus_Topic);
+
+    Serial.println("Device topics are ");
+    Serial.println(Device1_Topic);
+    Serial.println(Device2_Topic);
+    Serial.println(Device3_Topic);
+    Serial.println(Device4_Topic);
+    Serial.println(Device5_Topic);
+    Serial.println(Device6_Topic);
+    Serial.println(Device7_Topic);
+    Serial.println(Device8_Topic);
+    Serial.println(Device9_Topic);
+    Serial.println(Device10_Topic);
+    Serial.println(Device11_Topic);
+    Serial.println(Device12_Topic);
+    Serial.println(Device1TimeSchedule_Topic);
+    Serial.println(Device2TimeSchedule_Topic);
+    Serial.println(Device3TimeSchedule_Topic);
+    Serial.println(Device4TimeSchedule_Topic);
+    Serial.println(DeviceSendStatus_Topic);
+    Serial.println(DeviceGetStatus_Topic);
+    Serial.println(DeviceUpdateStatus_Topic);
+    Serial.println(DeviceONOFFStatus_Topic);
+    Serial.println(RTCUpdate_Topic);
+
+    delay(100);
+  }
+
+}
+
+
+void fnMQTTSerialPrintLEDToggle(void)
+{
+ApsisMQTTClient.loop();
+  delay(10); 
+    // put your main code here, to run repeatedly:
+    char chSerialData;
+    if (Serial.available() > 0) 
+    {
+        // read the incoming byte:
+        chSerialData = Serial.read();
+
+        // say what you got:
+        Serial.print("I received: ");
+        Serial.println(chSerialData, DEC);
+        Serial.print(" | 0x");
+        Serial.println(chSerialData, HEX);
+    }
+
+   // LEDToggle();
+
+}
+
+
+ 
+
+
+
+void MQTTConnect()
+{
+  ApsisMQTTClient.setServer(mqtt_broker, mqtt_port);
+  ApsisMQTTClient.setCallback(callback);
+
+  while (!ApsisMQTTClient.connected())
+  {
+    Serial.println("Connecting to mqtt broker.....");
+    if (ApsisMQTTClient.connect("PUB_Device3", mqtt_username, mqtt_password ))
+    {
+      Serial.println("mqtt broker connected");
+    }
+    else
+    {
+      Serial.print("failed with state ");
+      Serial.print(ApsisMQTTClient.state());
+      delay(2000);
+    }
+  }
+}
+
+
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  String RTCYY = "";
+  String RTCMM = "";
+  String RTCDD = "";
+  String RTCHH = "";
+  String RTCMIN = "";
+  String RTCSS = "";
+
+  
+  Serial.print("NEW Message arrived from topic: ");
+  Serial.println();
+//  Serial.println(topic);
+//  Serial.print("Message:");
+//  Serial.println("Device 1 topic is ");
+  Serial.println(Device1_Topic);
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char) payload[i]);
+  }
+  Serial.println();
+  if (strcmp(topic, Device1_Topic) == 0)
+  {
+    Serial.println("data come from topic 1");
+    if ((char) payload[0] == '1')
+    {
+      Serial.println("**11");
+      Device1_Status = 1;
+      pinMode(0, OUTPUT);
+      digitalWrite(0,HIGH);
+      delay(1000);
+      
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "1:ON");
+    }
+    if ((char) payload[0] == '0')
+    {
+      Serial. println("**10");
+      Device1_Status = 0;
+      pinMode(2, OUTPUT);
+      digitalWrite(2,HIGH);
+      delay(1000);
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "1:OFF");
+    }
+  }
+  else if (strcmp(topic, Device2_Topic) == 0)
+  {
+    if ((char) payload[0] == '1')
+    {
+      Serial.println("**21"); 
+      Device2_Status = 1;
+
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "2:ON");
+    }
+    if ((char) payload[0] == '0')
+    {
+      Serial.println("**20");
+      Device2_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "2:OFF");
+    }
+  }
+  else if (strcmp(topic, Device3_Topic) == 0)
+  {
+    if ((char) payload[0] == '1')
+    {
+      Serial.println("**31");
+      Device3_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "3:ON");
+    }
+    if ((char) payload[0] == '0')
+    {
+      Serial.println("**30");
+      Device3_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "3:OFF");
+    }
+  }
+  else if (strcmp(topic, Device4_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**41"); 
+      Device4_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "4:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**40");
+      Device4_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "4:OFF");
+    }
+  }
+   else if (strcmp(topic, Device5_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**51"); 
+      Device5_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "5:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**50");
+      Device5_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "5:OFF");
+    }
+  }
+   else if (strcmp(topic, Device6_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**61"); 
+      Device6_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "6:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**60");
+      Device6_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "6:OFF");
+    }
+  }
+   else if (strcmp(topic, Device7_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**71"); 
+      Device7_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "7:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**70");
+      Device7_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "7:OFF");
+    }
+  }
+   else if (strcmp(topic, Device8_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**81"); 
+      Device8_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "8:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**80");
+      Device8_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "8:OFF");
+    }
+  }
+   else if (strcmp(topic, Device9_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**91"); 
+      Device9_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "9:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**90");
+      Device9_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "9:OFF");
+    }
+  }
+   else if (strcmp(topic, Device10_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**A1"); 
+      Device10_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "10:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**A0");
+      Device10_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "10:OFF");
+    }
+  }
+   else if (strcmp(topic, Device11_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**B1"); 
+      Device11_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "11:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**B0");
+      Device4_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "11:OFF");
+    }
+  }
+   else if (strcmp(topic, Device12_Topic) == 0)
+  {
+    if ((char)payload[0] == '1')
+    {
+      Serial.println("**C1"); 
+      Device12_Status = 1;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "12:ON");
+    }
+    if ((char)payload[0] == '0')
+    {
+      Serial.println("**C0");
+      Device12_Status = 0;
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, "12:OFF");
+    }
+  }
+
+/********************************************************************************************************************************88 */
+    else  if (strcmp(topic, Device1TimeSchedule_Topic) == 0)
+  {
+    for(int i = 0;i <length;i++)
+    {
+      arr1[i] = payload[i];
+      Serial.print("arr1[i] ");
+      Serial.println(arr1[i]);
+      delay(10);
+    }
+    for(i=0;i<96;i++)
+    {
+      EEPROM.write(i+127,arr1[i]);
+      EEPROM.commit();
+    }
+    String Device1_addr;
+    for (int i = 127; i <223; ++i)
+    {
+    Device1_addr += char(EEPROM.read(i));
+    }
+  
+    Serial.println();
+    Serial.print("Device1_addr: ");
+    Serial.println(Device1_addr);
+    delay(10);   
+  }
+    
+    
+    
+    
+    else  if (strcmp(topic, Device2TimeSchedule_Topic) == 0)
+  {
+    for(int i = 0;i <length;i++)
+    {
+      arr2[i] = payload[i];Serial.print("arr2[i] ");Serial.println(arr2[i]);delay(10);
+    }
+    for(i=0;i<96;i++)
+    {
+      EEPROM.write(i+223,arr2[i]);
+      EEPROM.commit();
+    }
+    String Device2_addr;
+    for (int i = 223; i <319; ++i)
+    {
+    Device2_addr += char(EEPROM.read(i));
+    }
+  
+    Serial.println();
+    Serial.print("Device2_addr: ");
+    Serial.println(Device2_addr);
+    delay(10); 
+  }
+
+ 
+  else  if (strcmp(topic, Device3TimeSchedule_Topic) == 0)
+  {
+    for(int i = 0;i <length;i++)
+    {
+      arr3[i] = payload[i];
+      Serial.print("arr3[i] ");
+      Serial.println(arr3[i]);
+      delay(10);
+    } 
+    for(i=0;i<96;i++)
+    {
+      EEPROM.write(i+319,arr3[i]);
+      EEPROM.commit();
+    }
+    String Device3_addr;
+    for (int i = 319; i <415; ++i)
+    {
+    Device3_addr += char(EEPROM.read(i));
+    }
+  
+    Serial.println();Serial.print("Device3_addr: ");Serial.println(Device3_addr);
+    delay(10); 
+
+    
+  }
+  else  if (strcmp(topic, Device4TimeSchedule_Topic) == 0)
+  {
+    for(int i = 0;i <length;i++)
+    {
+      arr4[i] = payload[i];Serial.print("arr4[i] ");Serial.println(arr4[i]);delay(10);
+    } 
+    for(i=0;i<96;i++)
+    {
+      EEPROM.write(i+415,arr4[i]);
+      EEPROM.commit();
+    }
+    String Device4_addr;
+    for (int i = 415; i <511; ++i)
+    {
+    Device4_addr += char(EEPROM.read(i));
+    }
+  
+    Serial.println();
+    Serial.print("Device4_addr: ");
+    Serial.println(Device4_addr);
+    delay(10); 
+   }
+   
+    else if(strcmp(topic, DeviceGetStatus_Topic) == 0)
+    {
+      char Buffer[20];
+      sprintf(Buffer,"1:%d,2:%d,3:%d,4:%d,5:%d,6:%d,7:%d,8:%d,9:%d,10:%d,11:%d,12:%d",Device1_Status,Device2_Status,Device3_Status,Device4_Status,Device5_Status,Device6_Status,Device7_Status,Device8_Status,Device9_Status,Device10_Status,Device11_Status,Device12_Status);
+      ApsisMQTTClient.publish(DeviceSendStatus_Topic, Buffer);
+    }
+    else if(strcmp(topic, RTCUpdate_Topic) == 0)
+    {
+      for(i=0;i<4;i++)
+      {
+        RTCYY = RTCYY + (char)payload[i];
+      }
+      for(i=0;i<6;i++)
+      {
+        RTCMM = RTCMM + (char)payload[i];
+      }
+      for(i=0;i<8;i++)
+      {
+        RTCDD = RTCDD + (char)payload[i];
+      }
+      for(i=0;i<10;i++)
+      {
+        RTCHH = RTCHH + (char)payload[i];
+      }
+      for(i=0;i<12;i++)
+      {
+        RTCMIN = RTCMIN + (char)payload[i];
+      }
+      for(i=0;i<14;i++)
+      {
+        RTCSS = RTCSS + (char)payload[i];
+      }
+      int IntYY = RTCYY.toInt();
+      Serial.print("The year is: ");
+      Serial.println(IntYY);
+      int IntMM = RTCMM.toInt();
+      Serial.print("The Month is: ");
+      Serial.println(IntMM);
+      int IntDD = RTCDD.toInt();
+      Serial.print("The Day is: ");
+      Serial.println(IntDD);
+      int IntHH = RTCHH.toInt();
+      Serial.print("The Hour is: ");
+      Serial.println(IntHH);
+      int IntMIN = RTCMIN.toInt();
+      Serial.print("The Minute is: ");
+      Serial.println(IntMIN);
+      int IntSS = RTCSS.toInt();
+      Serial.print("The Second is: ");
+      Serial.println(IntSS);
+      rtc.adjust(DateTime(IntYY,IntMM,IntDD,IntHH,IntMIN,IntSS));
+      Serial.println("RTC Updated");
+      
+    }
+
+   
+  
+}
+
+void fnMQTTLoop(void)
+{
+  ApsisMQTTClient.loop();
+  //fnMQTTSerialPrintLEDToggle();
+}
+
+
+
+//****************************************************************MQTT TESTING FINISH********************************************************************//
+
+//****************************************************************WIFI TESTING********************************************************************//
+// Global variable Declaration
+int incomingByte = 0; // for incoming serial data
+char chSerialData = 0;
+//const int pswFactoryReset = 14; 
+int nIterationCount1 = 0;
+int addr = 0;
+String content;
+String st;
+int statusCode;
+
+String esid     = "";
+String epass    = "";
+
+
+HTTPClient http;
+ESP8266WebServer  server(80); //Establishing local server at port 80 whenever required.
+
+
+ESP8266WiFiMulti WiFiMulti;
+
+//WiFiClient ApsisClient;
+
+//RTC_NTP
+
+
+
+
+bool testWifi(void)
+{
+    int c = 0;
+    Serial.println("Waiting for Wifi to connect");
+    while (c < 20)
+    {
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            return true;
+        }
+        delay(1000);
+        
+        Serial.print(".");
+        digitalWrite(12, !digitalRead(12));
+        c++;
+    }
+    // Serial.println("");
+    // Serial.println("Connect timed out, opening AP");
+    return false;
+}
+
+
+void fnHardFactoryReset(void)
+{
+    // Serial.println("Befor Hard Resetting mode..... "); 
+    // //delay(5000);
+
+  while(digitalRead(pswFactoryReset) == 1)
+   {
+    delay(1000);
+    nIterationCount1++;
+    Serial.print("nIterationCount1 = "); 
+    Serial.println(nIterationCount1); 
+
+    if(nIterationCount1 >= 5)
+    {     
+       Serial.print("Activated HardFactoryReset"); 
+
+       pinMode(pswFactoryReset, OUTPUT);
+       digitalWrite(pswFactoryReset, LOW );
+       delay(1000);
+
+       EEPROM.begin(512); //Initialize EEPROM
+        // write to EEPROM.
+        EEPROM.write(addr, '0');
+        addr++; //Increment address
+        EEPROM.write(addr, '0');
+        addr++; //Increment address
+        EEPROM.write(addr, '0');
+        addr++; //Increment address
+        EEPROM.write(addr, '0');
+        addr++; //Increment address
+        EEPROM.write(addr, '0');
+        EEPROM.commit(); //Store data to EEPROM
+        Serial.println("HARD RESET");
+        
+      
+       //ESP.restart();            
+     } 
+   }
+    pinMode(pswFactoryReset, INPUT);
+}
+
+
+void launchWeb()
+{
+    // Serial.println("");
+    if (WiFi.status() == WL_CONNECTED)
+        Serial.println("WiFi connected");
+
+    createWebServer();
+    // Start the server
+    server.begin();
+}
+
+
+void setupAP(void)
+{
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(100);
+
+    delay(100);
+    WiFi.softAP("MIGRO_SWITCH", "");
+    // Serial.println("Initializing_softap_for_wifi credentials_modification");
+    launchWeb();
+    // Serial.println("over");
+}
+
+
+void createWebServer()
+{
+    {
+        server.on("/", []() {
+            IPAddress ip = WiFi.softAPIP();
+            String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+            content = "<!DOCTYPE HTML>\r\n<html><title> Login Page </title> ";
+            content += "<p style='text-transform: uppercase;'><center> <h1> Welcome to Wifi Credentials Update page </h1> </center></p>";
+            content += "<center> <h2> Provided By APSIS Solutions </h2> </center>";
+            content += "<style>  Body {font-family: Calibri, Helvetica, sans-serif;background-color: pink;}";
+            content += " form {border: 3px solid #f1f1f1;}";
+            content += " .container {padding: 25px;background-color: lightblue;}";
+            content += "input[type=text], input[type=password] {width: 100%;margin: 8px 0;padding: 12px 20px;display: inline-block;border: 2px solid green;box-sizing: border-box;} ";
+            //content += "<form action=\"/scan\" method=\"POST\"><input type=\"submit\" value=\"scan\"></form>";
+            content += "button {background-color: #4CAF50;width: 100%;color: orange;padding: 15px;margin: 10px 0px;border: none;cursor: pointer;} ";
+            content += "</style> <body>";
+            //content += ipStr;
+            content += "<p>";
+            content += st;
+            content += "<div class='container'> ";
+            content += "</p><form method='get' action='/setting'><h3><label>SSID: </label><h3><input type='text' name='ssid' id='ssid' placeholder='Enter Username' length=32><br><h3><label>PASSWORD:<label></h3><input type='password' id='pass' name='pass' placeholder='Enter Password' length=64><br><button><input id='connect' type='submit'></button></div></form>";
+            content += "</html>";
+            server.send(200, "text/html", content);
+        });
+        server.on("/scan", []() {
+            //setupAP();
+            IPAddress ip = WiFi.softAPIP();
+            String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+
+            content = "<!DOCTYPE HTML>\r\n<html>go back";
+            server.send(200, "text/html", content);
+        });
+
+        server.on("/setting", []() {
+            String qsid = server.arg("ssid");
+            String qpass = server.arg("pass");
+
+            if (qsid.length() > 0 && qpass.length() > 0)
+            {
+                Serial.println("clearing eeprom");
+                for (int i = 0; i < 96; ++i)
+                {
+                    EEPROM.write(i, 0);
+                }
+                Serial.println(qsid);
+                Serial.println("");
+                Serial.println(qpass);
+                Serial.println("");
+
+                Serial.println("writing eeprom ssid:");
+                for (int i = 0; i < qsid.length(); ++i)
+                {
+                    EEPROM.write(i, qsid[i]);
+                    Serial.print("Wrote: ");
+                    Serial.println(qsid[i]);
+                }
+                Serial.println("writing eeprom pass:");
+                for (int i = 0; i < qpass.length(); ++i)
+                {
+                    EEPROM.write(32 + i, qpass[i]);
+                    Serial.print("Wrote: ");
+                    Serial.println(qpass[i]);
+                }
+                EEPROM.commit();
+
+                IPAddress ip = WiFi.softAPIP();
+
+                String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+                Serial.print("ipStr :");
+                Serial.println(ipStr);
+                content = "<!DOCTYPE HTML>\r\n<html>SUCESS";
+                content += "</html>";
+                server.send(200, "text/html", content);
+                statusCode = 200;
+                delay(2000);
+                ESP.reset();
+            }
+            else
+            {
+                content = "{\"Error\":\"404 not found\"}";
+                statusCode = 404;
+                Serial.println("Sending 404");
+            }
+            server.sendHeader("Access-Control-Allow-Origin", "*");
+            server.send(statusCode, "application/json", content);
+        });
+    }
+
+}       
+
+
+void fnDetectWifiAndConnect(void)
+{
+  while ((WiFi.status() != WL_CONNECTED)) // Keep waiting till WiFi Connect and then Start Server
+  {
+      digitalWrite(13, !digitalRead(13));
+      delay(100);
+      server.handleClient();
+  }
+}
+
+void fnReadSSID_PWD_FromEEPROM_WiFiAutoConnect(void)  
+{
+    //---------------------------------------- Read eeprom for ssid and pass
+    Serial.println("Reading EEPROM ssid");
+    
+    for (int i = 0; i < 32; ++i) 
+    {
+        esid += char(EEPROM.read(i));
+    }
+    
+    Serial.print("SSID: ");
+    Serial.println(esid);
+    Serial.println("Reading EEPROM pass");
+    
+    for (int i = 32; i < 96; ++i)
+    {
+        epass += char(EEPROM.read(i));
+    }
+    Serial.print("PASS: ");
+    Serial.println(epass);
+
+    WiFi.begin(esid.c_str(), epass.c_str());    //  WiFi.begin("D-Link_DIR-615", "\"#@t#w@y\"");
+  
+    if (testWifi())
+    {
+        digitalWrite(13,LOW);
+        digitalWrite(12,HIGH);
+        WiFi.softAPdisconnect();
+        Serial.println("Succesfully Connected!!!");
+        //return;
+    }
+    else
+    {
+        Serial.println("Turning the HotSpot On");
+        launchWeb();
+        setupAP(); // Setup HotSpot
+    }
+    fnDetectWifiAndConnect();
+}
+
+
+//******************************RTC AND EEPROM BEGIN******************************************************************************************************************//
+
+//RTC_DS1307 rtc; 
+
+//*****************************SERIAL EEPROM RTC BEGIN*********************************//
+void fnSerailEEPROMRtcBegin(void)
+{
+  EEPROM.begin(512);
+  rtc.begin(); 
+  Serial.begin(9600);
+}
+/*********************************** Declaration of RTC variables***********************/
+
+  unsigned char b[4][16];
+  //char gchCharArrayBuf[224];
+  char gchCharArrayBuf[384];
+  char gunchCharArrayBuf_2D[24][16];
+  int k;
+  unsigned int D1S1TimeToIntegerValueON;
+  unsigned int D1S2TimeToIntegerValueON;
+  unsigned int D1S3TimeToIntegerValueON;
+  unsigned int D2S1TimeToIntegerValueON;
+  unsigned int D2S2TimeToIntegerValueON;
+  unsigned int D2S3TimeToIntegerValueON;
+  unsigned int D3S1TimeToIntegerValueON;
+  unsigned int D3S2TimeToIntegerValueON;
+  unsigned int D3S3TimeToIntegerValueON;
+  unsigned int D4S1TimeToIntegerValueON;
+  unsigned int D4S2TimeToIntegerValueON;
+  unsigned int D4S3TimeToIntegerValueON;
+  
+  
+  unsigned int D1S1TimeToIntegerValueOFF;
+  unsigned int D1S2TimeToIntegerValueOFF;
+  unsigned int D1S3TimeToIntegerValueOFF;
+  unsigned int D2S1TimeToIntegerValueOFF;
+  unsigned int D2S2TimeToIntegerValueOFF;
+  unsigned int D2S3TimeToIntegerValueOFF;
+  unsigned int D3S1TimeToIntegerValueOFF;
+  unsigned int D3S2TimeToIntegerValueOFF;
+  unsigned int D3S3TimeToIntegerValueOFF;
+  unsigned int D4S1TimeToIntegerValueOFF;
+  unsigned int D4S2TimeToIntegerValueOFF;
+  unsigned int D4S3TimeToIntegerValueOFF;
+  
+  int gnRTCCurrentTime;
+  int gnRTCWeekDay;
+  //int gnUserWeekDay[7]={1,1,0,0,0,1,1};// 1->SMTWTFS
+  int gnRTCActualWeekDay[7];
+  
+  int gnRTCCurrentTimeDump;
+  unsigned int TimeToIntegerValueON;//sunitha (RTC)
+  unsigned int TimeToIntegerValueOFF;
+  //int t=0;
+
+
+
+
+/****************************FUNCTION FOR READING THE EEPROM ADDRESS AND PRINT**************************************/
+
+void fnEEPROMRead(void)
+{
+     Serial.println(" EEPROM READING ");
+       String EEPROM_addr;
+      for (int i = 127; i <511; ++i)
+      {
+        EEPROM_addr += char(EEPROM.read(i));
+      }
+      
+      Serial.println();Serial.print("EEPROM_addr: ");Serial.println(EEPROM_addr);
+      delay(10); 
+    
+      EEPROM_addr.toCharArray(gchCharArrayBuf,EEPROM_addr.length()+1);
+    for(j=0;j<24;j++)
+      {
+        for(k=0;k<16;k++)
+        {
+         gunchCharArrayBuf_2D[j][k]=gchCharArrayBuf[i++];
+        }
+      }
+    
+      for(j=0;j<24;j++)
+      {
+        for(k=0;k<16;k++)
+        {
+          Serial.print(gunchCharArrayBuf_2D[j][k]);
+          Serial.print(" ");
+        }
+        Serial.println(" ");
+      }
+}
+
+
+
+/****************************FUNCTION FOR CONVERTING EEPROM VALUES TO INTEGER; TIME COVERSION***********************/
+   
+    
+    int fnEEPROMTimeToInteger(unsigned char uchLocation);
+    int fnEEPROMTimeToInteger(unsigned char uchLocation)// time converstion
+    {
+  
+
+      int nNumber=0;
+      nNumber = gunchCharArrayBuf_2D[uchLocation][4]-'0';
+      nNumber = nNumber*10 + gunchCharArrayBuf_2D[uchLocation][5]-'0';
+      nNumber = nNumber*10 + gunchCharArrayBuf_2D[uchLocation][6]-'0';
+      nNumber = nNumber*10 + gunchCharArrayBuf_2D[uchLocation][7]-'0';
+      return nNumber;
+    
+    }
+
+
+//********************FUNCTION FOR RTC UPDATE****************************************************************************************//
+
+void fnupdateRTC()
+{
+  //delay(5000);
+  Serial.println("Edit Mode..");
+ 
+  const char txt[6][15] = { "year [4-digit]", "month [1~12]", "day [1~31]",
+                            "hours [0~23]", "minutes [0~59]", "seconds [0~59]"};// ask user to enter new date and time
+  String str = "";
+  long newDate[6];
+  while (Serial.available()) 
+  {
+    Serial.read();  // clear serial buffer
+  }
+
+  for (int i = 0; i < 6; i++) 
+  {
+    Serial.print("Enter ");
+    Serial.print(txt[i]);
+    Serial.print(": ");
+
+   while (!Serial.available()) 
+   {
+      ; // wait for user input
+   }
+
+   str = Serial.readString();  // read user input
+   newDate[i] = str.toInt();   // convert user input to number and save to array
+   Serial.println(newDate[i]); // show user input
+  }
+
+  // update RTC
+  rtc.adjust(DateTime(newDate[0], newDate[1], newDate[2], newDate[3], newDate[4], newDate[5]));
+  Serial.println("RTC Updated!");
+
+
+
+/***************RTC New codes******************************/
+
+
+
+if ((gnRTCCurrentTime >= D1S1TimeToIntegerValueON) && (gnRTCCurrentTime <= D1S1TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 1 set 1_________________________________________");
+  Serial.println(" in the rtc loop");
+  if((gunchCharArrayBuf_2D[0][1] == 'C') && (gunchCharArrayBuf_2D[0][2] == '1'))
+  {
+      Serial.println(" in the config loop");
+    if(gunchCharArrayBuf_2D[0][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+      
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[0][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[0][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[0][10]-'0')) ||(gnRTCActualWeekDay[3] == (gunchCharArrayBuf_2D[0][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[0][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[0][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[0][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 1 SET1 ");
+          Serial.println("**11");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[0][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[0][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[0][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[0][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[0][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[0][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[0][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[0][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 1 SET1 ");
+          Serial.println("**11");
+          //EEPROM.write(gunchCharArrayBuf_2D[0][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } }  
+
+/***********************************DEVICE 1 SET 2*****************************************************************/
+
+if ((gnRTCCurrentTime >= D1S2TimeToIntegerValueON) && (gnRTCCurrentTime <= D1S2TimeToIntegerValueOFF))
+{
+
+  Serial.println("_________Device 1 set 2_________________________________________");
+  Serial.println(" in the rtc loop");
+  if((gunchCharArrayBuf_2D[2][1] == 'C') && (gunchCharArrayBuf_2D[2][2] == '1'))
+  {
+      Serial.println(" in the config loop");
+    if(gunchCharArrayBuf_2D[2][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+      
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[2][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[2][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[2][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[2][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[2][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[2][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[2][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 1 SET2 ");
+          Serial.println("**11");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[2][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0]  && (gunchCharArrayBuf_2D[2][8]-'0' )) ||(gnRTCActualWeekDay[1] &&(gunchCharArrayBuf_2D[2][9]-'0'))||(gnRTCActualWeekDay[2] &&(gunchCharArrayBuf_2D[2][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[2][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[2][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[2][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[2][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 1 SET2 ");
+          Serial.println("**11");
+          //EEPROM.write(gunchCharArrayBuf_2D[2][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } }  
+
+/******************************* DEVICE 1 SET 3 ****************************************************************/
+
+ if ((gnRTCCurrentTime >= D1S3TimeToIntegerValueON) && (gnRTCCurrentTime <= D1S3TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 1 set 3_________________________________________");
+  Serial.println(" in the rtc loop");
+  if((gunchCharArrayBuf_2D[4][1] == 'C') && (gunchCharArrayBuf_2D[4][2] == '1'))
+  {
+      Serial.println(" in the config loop");
+    if(gunchCharArrayBuf_2D[4][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+      
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[4][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[4][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[4][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[4][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[4][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[4][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[4][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 1 SET3 ");
+          Serial.println("**11");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[4][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[4][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[4][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[4][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[4][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[4][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[4][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[4][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 1 SET3 ");
+          Serial.println("**11");
+          //EEPROM.write(gunchCharArrayBuf_2D[4][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } }  
+ /**************************************DEVICE 2 SET 1************************************/
+
+
+ if ((gnRTCCurrentTime >= D2S1TimeToIntegerValueON) && (gnRTCCurrentTime <= D2S1TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 2 set 1_________________________________________");
+  Serial.println(" in the rtc loop");
+  if((gunchCharArrayBuf_2D[6][1] == 'C') && (gunchCharArrayBuf_2D[6][2] == '1'))
+  {
+      Serial.println(" in the config loop");
+    if(gunchCharArrayBuf_2D[6][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+      
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[6][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[6][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[6][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[6][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[6][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[6][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[6][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 2 SET1 ");
+          Serial.println("**21");
+        }
+    }  
+    else if(gunchCharArrayBuf_2D[6][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[6][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[6][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[6][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[6][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[6][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[6][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[6][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 2 SET1 ");
+          Serial.println("**21");
+          
+          //EEPROM.write(gunchCharArrayBuf_2D[6][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } }  
+/**************************Device 2 set2 ******************************/
+
+ if ((gnRTCCurrentTime >= D2S2TimeToIntegerValueON) && (gnRTCCurrentTime <= D2S2TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 2 set 2_________________________________________");
+  if((gunchCharArrayBuf_2D[8][1] == 'C') && (gunchCharArrayBuf_2D[8][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[8][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[8][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[8][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[8][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[8][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[8][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[8][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[8][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 2 SET2 ");
+          Serial.println("**21");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[8][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[8][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[8][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[8][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[8][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[8][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[8][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[8][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 2 SET2 ");
+          Serial.println("**21");
+          //EEPROM.write(gunchCharArrayBuf_2D[8][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } }  
+/***********************DEVICE 2 SET 3*****************************************/
+
+ if ((gnRTCCurrentTime >= D2S3TimeToIntegerValueON) && (gnRTCCurrentTime <= D2S3TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 2 set 3_________________________________________");
+  if((gunchCharArrayBuf_2D[10][1] == 'C') && (gunchCharArrayBuf_2D[10][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[10][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[10][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[10][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[10][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[10][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[10][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[10][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[10][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 2 SET3 ");
+          Serial.println("**21");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[10][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[10][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[10][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[10][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[10][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[10][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[10][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[10][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 2 SET3 ");
+          Serial.println("**21");
+          //EEPROM.write(gunchCharArrayBuf_2D[10][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } } 
+      
+/**************************************DEVICE 3 SET 1**********************************************************/
+
+
+ if ((gnRTCCurrentTime >= D3S1TimeToIntegerValueON) && (gnRTCCurrentTime <= D3S1TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 3 set 1_________________________________________");
+  if((gunchCharArrayBuf_2D[12][1] == 'C') && (gunchCharArrayBuf_2D[12][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[12][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[12][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[12][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[12][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[12][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[12][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[12][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[12][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 3 SET1 ");
+          Serial.println("**31");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[12][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[12][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[12][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[12][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[12][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[12][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[12][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[12][14]-'0')))      
+       {        
+          Serial.println(" led on not repeat DEVICE 3 SET1 ");
+          Serial.println("**31");
+          
+         // EEPROM.write(gunchCharArrayBuf_2D[12][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } } 
+
+/********************************DEVICE 3 SET 2************************/
+
+ if ((gnRTCCurrentTime >= D3S2TimeToIntegerValueON) && (gnRTCCurrentTime <= D3S2TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 3 set 2_________________________________________");
+  if((gunchCharArrayBuf_2D[14][1] == 'C') && (gunchCharArrayBuf_2D[14][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[14][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[14][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[14][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[14][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[14][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[14][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[14][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[14][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 3 SET2 ");
+           Serial.println("**31");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[14][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[14][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[14][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[14][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[14][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[14][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[14][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[14][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 3 SET2 ");
+           Serial.println("**31");
+          //EEPROM.write(gunchCharArrayBuf_2D[14][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } } 
+
+/*****************************DEVICE 3 SET 3 ************************/
+ if ((gnRTCCurrentTime >= D3S3TimeToIntegerValueON) && (gnRTCCurrentTime <= D3S3TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 3 set 3_________________________________________");
+  if((gunchCharArrayBuf_2D[16][1] == 'C') && (gunchCharArrayBuf_2D[16][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[16][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[16][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[16][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[16][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[16][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[16][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[16][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[16][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 3 SET3 ");
+           Serial.println("**31");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[16][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[16][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[16][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[16][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[16][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[16][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[16][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[16][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 3 SET3 ");
+           Serial.println("**31");
+          //EEPROM.write(gunchCharArrayBuf_2D[16][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } } 
+
+/***********************DEVICE 4 SET 1 *******************************************/
+
+ if ((gnRTCCurrentTime >= D4S1TimeToIntegerValueON) && (gnRTCCurrentTime <= D4S1TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 4 set 1_________________________________________");
+  if((gunchCharArrayBuf_2D[18][1] == 'C') && (gunchCharArrayBuf_2D[18][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[18][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[18][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[18][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[18][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[18][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[18][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[18][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[18][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 4 SET1 ");
+          Serial.println("**41");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[18][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[18][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[18][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[18][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[18][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[18][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[18][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[18][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 4 SET1 ");
+          Serial.println("**41");
+          //EEPROM.write(gunchCharArrayBuf_2D[18][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } }
+
+/*******************************DEVICE 4 SET 2**********************************/
+
+ if ((gnRTCCurrentTime >= D4S2TimeToIntegerValueON) && (gnRTCCurrentTime <= D4S2TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 4 set 2_________________________________________");
+  if((gunchCharArrayBuf_2D[20][1] == 'C') && (gunchCharArrayBuf_2D[20][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[20][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[20][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[20][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[20][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[20][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[20][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[20][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[20][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 4 SET2 ");
+          Serial.println("**41");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[20][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[20][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[20][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[20][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[20][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[20][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[20][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[20][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 4 SET2 ");
+          Serial.println("**41");
+          //EEPROM.write(gunchCharArrayBuf_2D[20][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } } 
+/********************************DEVICE 4 SET 3************************************************/
+
+ if ((gnRTCCurrentTime >= D4S3TimeToIntegerValueON) && (gnRTCCurrentTime <= D4S3TimeToIntegerValueOFF))
+{
+  Serial.println("_________Device 4 set 3_________________________________________");
+  if((gunchCharArrayBuf_2D[22][1] == 'C') && (gunchCharArrayBuf_2D[22][2] == '1'))
+  {
+    if(gunchCharArrayBuf_2D[22][3] == 'R')
+    {
+    Serial.println(" in the repeat loop");
+     
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[22][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[22][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[22][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[22][11]-'0')) ||
+        (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[22][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[22][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[22][14]-'0')))      
+        {
+          Serial.println(" led on repeat DEVICE 4 SET3 ");
+          Serial.println("**41");
+        }
+    }
+    
+    else if(gunchCharArrayBuf_2D[22][3] == 'N')
+     {
+      Serial.println(" in the notrepeat loop");
+      if ( (gnRTCActualWeekDay[0] && (gunchCharArrayBuf_2D[22][8]-'0')) ||(gnRTCActualWeekDay[1] && (gunchCharArrayBuf_2D[22][9]-'0'))||(gnRTCActualWeekDay[2] && (gunchCharArrayBuf_2D[22][10]-'0')) ||(gnRTCActualWeekDay[3] && (gunchCharArrayBuf_2D[22][11]-'0')) ||
+      (gnRTCActualWeekDay[4] && (gunchCharArrayBuf_2D[22][12]-'0')) || (gnRTCActualWeekDay[5] && (gunchCharArrayBuf_2D[22][13]-'0'))||(gnRTCActualWeekDay[6] && (gunchCharArrayBuf_2D[22][14]-'0')))      
+       {        
+          Serial.println(" led on notrepeat DEVICE 4 SET3 ");
+          Serial.println("**41");
+          //EEPROM.write(gunchCharArrayBuf_2D[22][3],'S');// WRITING STOP TO GET LED GLOW ONLY 1 TIME                
+        }
+      }
+      else{Serial.println(" led off ");}  } } 
+
+}
+
+
+//********************FUNCTION FOR RTC READ*************************************************************//
+
+
+void fnRTC_Read()// Reading data of DS1307
+{
+        //delay(5000);
+        const char dayInWords[8][4] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"}; // 0=SUN,1-MON,2-TUE,3-WED,4-THR,5-FRI,6-SAT
+        const char monthInWords[13][4] = {" ", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
+                                             "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"}; // 0-NO USE,1-JAN,2-FEB,3-MAR,4-APR,5-MAY,6-JUNE,7-JULY,8-AUG,9-SEP,10-OCT,11-NOV,12-DEC // get time and date from RTC and save in variables
+        DateTime rtcTime = rtc.now();
+      
+        int ss = rtcTime.second();
+        int mm = rtcTime.minute();
+        //int hh = rtcTime.twelveHour();
+        int hh = rtcTime.hour();
+        int DD = rtcTime.dayOfTheWeek();
+        int dd = rtcTime.day();
+        int MM = rtcTime.month();
+        int yyyy = rtcTime.year();
+      
+        Serial.println(" date details");
+        Serial.println(" ");
+        // print date in dd-MMM-yyyy format and day of week
+        if (dd < 10)   // add preceeding '0' if number is less than 10
+        Serial.print('0');
+        Serial.print(dd); // Date
+        Serial.print("-");
+        Serial.print(monthInWords[MM]); // Mon
+        Serial.print("-");
+        Serial.print(yyyy); // year
+        Serial.println(" ");
+      
+      //  Serial.println("Day in a week int value ");  
+      //  Serial.print(DD);
+      
+      //  Serial.println("Day in a week");  
+      //  Serial.print(dayInWords[DD]);
+        
+        Serial.println("Time");
+        // print time in 12H format
+        if (hh < 10)
+        Serial.print('0');
+        Serial.print(hh);
+        Serial.print(':');
+        if (mm < 10) 
+        Serial.print('0');
+        Serial.print(mm);
+        Serial.print(':');
+      
+        if (ss < 10)
+        Serial.print('0'); 
+        Serial.print(ss);
+      
+      if (DD == 0){gnRTCActualWeekDay[0]= 1;}else {gnRTCActualWeekDay[0]= 0;}//sun
+      if (DD == 1){gnRTCActualWeekDay[1]= 1;}else {gnRTCActualWeekDay[1]= 0;}//mon
+      if (DD == 2){gnRTCActualWeekDay[2]= 1;}else {gnRTCActualWeekDay[2]= 0;}//tue
+      if (DD == 3){gnRTCActualWeekDay[3]= 1;}else {gnRTCActualWeekDay[3]= 0;}//wed
+      if (DD == 4){gnRTCActualWeekDay[4]= 1;}else {gnRTCActualWeekDay[4]= 0;}//thr
+      if (DD == 5){gnRTCActualWeekDay[5]= 1;}else {gnRTCActualWeekDay[5]= 0;}//fri
+      if (DD == 6){gnRTCActualWeekDay[6]= 1;}else {gnRTCActualWeekDay[6]= 0;}//sat
+      
+      
+      Serial.println(" After concverstion gnRTCActualWeekDay");
+      
+       for (i=0;i<7;i++)
+      {
+        Serial.print(gnRTCActualWeekDay[i]); // week days array
+        
+      }
+      
+      delay(1000);
+      gnRTCCurrentTime=hh*100+mm; // rtc value into integers
+      Serial.println("gnRTCCurrentTime");
+      Serial.println(gnRTCCurrentTime);
+      delay(10);
+
+
+
+
+      D1S1TimeToIntegerValueON = 2339;
+     D1S2TimeToIntegerValueON = D1S1TimeToIntegerValueON+1;
+     D1S3TimeToIntegerValueON = 2342;
+     D1S1TimeToIntegerValueOFF = 2343;
+     D1S2TimeToIntegerValueOFF = 2344;
+     D1S3TimeToIntegerValueOFF = 2345;
+
+
+     D2S1TimeToIntegerValueON = 2346;
+     D2S2TimeToIntegerValueON = 2347;
+     D2S3TimeToIntegerValueON = 2348;
+     D2S1TimeToIntegerValueOFF = 2349;
+     D2S2TimeToIntegerValueOFF = 2350;
+     D2S3TimeToIntegerValueOFF = 2351;
+
+     D3S1TimeToIntegerValueON = D2S3TimeToIntegerValueOFF +1;
+     D3S2TimeToIntegerValueON = D3S1TimeToIntegerValueON +1 ;
+     D3S3TimeToIntegerValueON = D3S2TimeToIntegerValueON + 1;
+     D3S1TimeToIntegerValueOFF = D3S3TimeToIntegerValueON +1;
+     D3S2TimeToIntegerValueOFF = D3S1TimeToIntegerValueOFF+1 ;
+     D3S3TimeToIntegerValueOFF = D3S2TimeToIntegerValueOFF +1;
+
+     D4S1TimeToIntegerValueON = 2358;
+     D4S2TimeToIntegerValueON = 2359;
+     D4S3TimeToIntegerValueON = 0000;
+     D4S1TimeToIntegerValueOFF = 0001;
+     D4S2TimeToIntegerValueOFF = 0002;
+     D4S3TimeToIntegerValueOFF = 0003;
+     
+     int DeviceOn[12] = {1100,1102,1104,1106,1108,1110,1112,1114,1116,1118,1120,1122};
+     char DeviceNameTimeOn[12][30] = {"Device1 Set1 On","Device1 Set2 On","Device1 Set3 On","Device2 Set1 On","Device2 Set2 On","Device2 Set3 On","Device3 Set1 On","Device3 Set2 On","Device3 Set3 On","Device4 Set1 On","Device4 Set2 On","Device4 Set3 On"};
+     int DeviceOff[12] = {1101,1103,1105,1107,1109,1111,1113,1115,1117,1119,1121,1123};
+     char DeviceNameTimeOff[12][30] = {"Device1 Set1 Off","Device1 Set2 Off","Device1 Set3 Off","Device2 Set1 Off","Device2 Set2 Off","Device2 Set3 Off","Device3 Set1 Off","Device3 Set2 Off","Device3 Set3 Off","Device4 Set1 Off","Device4 Set2 Off","Device4 Set3 Off"};
+     char DaysSelect[7][20] = {"Sunday","Monday","Tuesday","Wednessday","Thursday","Friday","Saturday"};
+     
+     
+     for(i=0; i<12; i++)
+     {
+      if(gnRTCCurrentTime == DeviceOn[i])
+      {
+        Serial.println(DeviceNameTimeOn[i]);
+        //break;
+        if(i<3)
+        {
+          //dev 1 on
+          pinMode(LEDDEV1,OUTPUT);
+          digitalWrite(LEDDEV1,HIGH);
+        }
+        else if (i<6)
+        {
+         // dev 2 on 
+          pinMode(LEDDEV2,OUTPUT);
+          digitalWrite(LEDDEV2,HIGH);
+        }
+       
+        else if (i< 9)
+        {
+          //dev 3
+          pinMode(LEDDEV3,OUTPUT);
+          digitalWrite(LEDDEV3,HIGH);
+        }
+         else if (i< 11)
+        {
+          //dev 4
+          pinMode(LEDDEV4,OUTPUT);
+          digitalWrite(LEDDEV4,HIGH);
+        }
+      }
+      if(gnRTCCurrentTime == DeviceOff[i])
+      {
+        Serial.println(DeviceNameTimeOff[i]);
+        if(i<3)
+        {
+          //dev 1 off
+          pinMode(LEDDEV1,OUTPUT);
+          digitalWrite(LEDDEV1,LOW);
+        }
+        else if (i<6)
+        {
+         // dev 2 on 
+          pinMode(LEDDEV2,OUTPUT);
+          digitalWrite(LEDDEV2,LOW);
+        }
+       
+        else if (i< 9)
+        {
+          //dev 3
+          pinMode(LEDDEV3,OUTPUT);
+          digitalWrite(LEDDEV3,LOW);
+        }
+         else if (i< 11)
+        {
+          //dev 4
+          pinMode(LEDDEV4,OUTPUT);
+          digitalWrite(LEDDEV4,LOW);
+        }
+      }
+//      if ((gnRTCCurrentTime != DeviceOn[i]) && (gnRTCCurrentTime != DeviceOff[i]))
+//      {
+//        Serial.println("Time not matched");
+//        // break;
+//      }
+     }
+
+}
+
+//*************************************************Initialize_NTPClient_to_get_time******************************************************************************************************/
+void  fnNTPClientbegin()
+{
+    timeClient.begin();
+    // Set offset time in seconds to adjust for your timezone, for example:
+    // GMT +1 = 3600
+     //GMT +8 = 28800
+    // GMT -1 = -3600
+    // GMT 0 = 0
+    // GMT +5.30 = 19800
+    timeClient.setTimeOffset(-3600);
+
+    
+
+}
+
+
+
+
+//*********************************************RTC_NTP_FETCH_GMT*****************************************************************************************************************/
+
+
+
+
+
+ void fnRTC_NTP_fetchGMT_Time(void)
+ {
+        
+          timeClient.update();
+          unsigned long epochTime = timeClient.getEpochTime();
+          if(epochTime < 1629910920)  // Epoch time for 25th August, 2021
+          {
+            Serial.print("Wrong Epoch time received");
+          }
+          else
+          {
+            Serial.print("Correct Epoch time received/n");
+            Serial.print("Epoch Time: ");
+            Serial.println(epochTime);
+            
+            String formattedTime = timeClient.getFormattedTime();
+            Serial.print("Formatted Time: ");
+            Serial.println(formattedTime); 
+  
+            int currentHour = timeClient.getHours();
+            Serial.print("Hour: ");
+            Serial.println(currentHour);  
+          
+            int currentMinute = timeClient.getMinutes();
+            Serial.print("Minutes: ");
+            Serial.println(currentMinute); 
+             
+            int currentSecond = timeClient.getSeconds();
+            Serial.print("Seconds: ");
+            Serial.println(currentSecond);  
+          
+            String weekDay = weekDays[timeClient.getDay()];
+            Serial.print("Week Day: ");
+            Serial.println(weekDay);    
+          
+            //Get a time structure
+            struct tm *ptm = gmtime ((time_t *)&epochTime); 
+          
+            int monthDay = ptm->tm_mday;
+            Serial.print("Month day: ");
+            Serial.println(monthDay);
+          
+            int currentMonth = ptm->tm_mon+1;
+            Serial.print("Month: ");
+            Serial.println(currentMonth);
+          
+            String currentMonthName = months[currentMonth-1];
+            Serial.print("Month name: ");
+            Serial.println(currentMonthName);
+          
+            int currentYear = ptm->tm_year+1900;
+            Serial.print("Year: ");
+            Serial.println(currentYear);
+          
+            //Print complete date:
+            String currentDate = String(currentYear) + "-" + String(currentMonth) + "-" + String(monthDay);
+            Serial.print("Current date: ");
+            Serial.println(currentDate);
+          
+            Serial.println("");
+          
+            //delay(2000);
+            rtc.adjust(DateTime(currentYear, currentMonth, monthDay, currentHour, currentMinute, currentSecond));
+            Serial.println("RTC Updated!");
+          }
+
+
+         
+
+         /* int L_currentHour = currentHour + 5;
+          Serial.print("Hour: ");
+          Serial.println(L_currentHour);
+          
+          int L_currentMinute = currentMinute + 30;
+          Serial.print("Minute: ");
+          Serial.println(L_currentMinute);
+
+          int L_currentSecond = currentSecond;
+          Serial.print("Seconds: ");
+          Serial.println(currentSecond);  
+
+          //Print complete date:
+          String L_currentDate = String(currentYear) + "-" + String(currentMonth) + "-" + String(monthDay);
+          Serial.print("Local Current date: ");
+          Serial.println(currentDate);*/
+
+}
+
+
+
+
+
+
+  
+            
+        //fnRTCReadandUpdate();                          //UPDATE AND PRINT RTC DATA WHEN 'u' IS PRESSED ON TERMINAL   
+
+
+
+/*********************************THINKSPEAK BEGIN********************************************************/
+
+
+void fnThingSpeakReadWrite2(void)
+{
+    String serverName = "http://api.thingspeak.com/update?";
+    String apiKey;
+    char SerialStarData;
+    String ReadWriteData;
+    String field1;
+    String field2;
+    String field3;
+    String field4;
+    String field5;
+    String field6;
+    String field7;
+    String field8;
+    
+    String Channel;
+    String field;
+    String Outputdata;
+    String payload;
+    String MainData;
+    String DataToMicrocon;
+   // if (Serial.available())
+    //{
+     //SerialStarData = Serial.read();
+     //if (SerialStarData == '*')
+     //{
+        ReadWriteData = Serial.readStringUntil('<');
+        if(ReadWriteData == "W")
+        {
+          apiKey = Serial.readStringUntil('>');
+          field1 = Serial.readStringUntil('&');
+          field2 = Serial.readStringUntil('&');
+          field3 = Serial.readStringUntil('&');
+          field4 = Serial.readStringUntil('&');
+          field5 = Serial.readStringUntil('&');
+          field6 = Serial.readStringUntil('&');
+          field7 = Serial.readStringUntil('&');
+         // field8 = Serial.readStringUntil('\n');
+
+           delay(100);
+
+      //Check WiFi connection status
+        if(WiFi.status()== WL_CONNECTED)
+       {
+        HTTPClient http; 
+       
+        // Data to send with HTTP POST
+        String httpRequestData = serverName + "api_key=" + apiKey + + "&field1=" + field1 + "&field2=" + field2 + "&field3=" + field3 + "&field4=" + field4 + "&field5=" + field5 + "&field6=" + field6 +  "&field7=" + field7;          
+        // Send HTTP POST request
+         http.begin(httpRequestData);
+        // Specify content-type header
+        http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+        Serial.println(httpRequestData);
+        int httpResponseCode = http.GET();
+   
+        Serial.print("HTTP Response code: ");
+        Serial.println(httpResponseCode);
+
+        payload = http.getString();
+        Serial.print("payload is: ");
+        Serial.println(payload);
+       
+        // Free resources
+        http.end();
+        }
+     }
+     else if(ReadWriteData == "R")
+      {
+         apiKey  = Serial.readStringUntil('>');
+         Channel = Serial.readStringUntil('>');
+         field   = Serial.readStringUntil('>');
+         String httpRequestData = "http://api.thingspeak.com/channels/" + Channel + "/fields/" + field + "/last.json?api_key=" + apiKey + "&results=2";
+         Serial.print("httpRequestData is ");
+         Serial.println(httpRequestData);
+           if(WiFi.status()== WL_CONNECTED)
+             {
+                HTTPClient http;        
+                http.begin(httpRequestData);
+            // Specify content-type header
+                http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+                Serial.println(httpRequestData);
+                int httpResponseCode = http.GET();
+           
+                Serial.print("HTTP Response code: ");
+                Serial.println(httpResponseCode);
+        
+                payload = http.getString();
+                Serial.print("payload is: ");
+                Serial.println(payload);
+               
+                // Free resources
+                http.end();
+             }
+             //*R<DY20OO1OKG1V0Q49>1369048>1>
+         Outputdata = payload.substring(61,62);
+         DataToMicrocon = payload.substring(61,64);
+         Serial.print("*<");
+         Serial.print(DataToMicrocon);
+         Serial.print(">");
+         MainData = Serial.readStringUntil('"');
+         Serial.print(Outputdata);
+         //Serial.print("MainData is : ");
+
+       }
+  //}
+}
+
+//**************************************Firmware_Update*****************************************************************************************************************************//
+
+const float version= 1.00;
+void FirmwareUpdate(void)
+  {
+    http.begin(url_version);               // for security, ssl certification is required. 
+    delay(100);
+    int httpCode = http.GET();            // Get the version info 
+    delay(100);                                     
+    String payload; // String
+    if (httpCode == HTTP_CODE_OK)         // Check flag for  version received 
+    {
+      payload = http.getString();         // save received version
+      Serial.println(payload);
+    }
+    else
+    {
+      Serial.print("error in downloading version file:");
+      Serial.println(httpCode);
+     }
+    http.end();
+    if (httpCode == HTTP_CODE_OK)        
+    {
+      if( version >= payload.toFloat()  )              // Check flag, this is where it compares the previous version and the current version if( payload.equals(version))
+      {   
+         Serial.println("Device on latest firmware version");    // if its equal do nothing 
+      }
+    else
+    {
+       Serial.println("New firmware detected");    // else Get the frimware 
+       Serial.println(payload.toFloat());
+       WiFiClient client;
+  
+       ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);   // This blinks untill the code gets uploaded #notRequired tho', useful to note that uploading has initiated when the led flickers
+  
+      //," ","5B:FB:D1:D4:49:D3:0F:A9:C6:40:03:34:BA:E0:24:05:AA:D2:E2:01"); 
+     t_httpUpdate_return ret = ESPhttpUpdate.update(url_bin);      // returns the binary of the firmware 
+      switch (ret) 
+      {
+        case HTTP_UPDATE_FAILED:
+          Serial.printf("HTTP request failed (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str()); // error flag
+          break;
+      case HTTP_UPDATE_NO_UPDATES:
+          Serial.println("No updates");
+          break;
+      case HTTP_UPDATE_OK:
+          Serial.println("HTTP_UPDATE_OK");
+          break;
+      } 
+     }
+   }  
+}
+
+
+/************************************ALEXA BEGINS*************************************/
+
+const long interval = 10000; 
+
+//void firstLightChanged(uint8_t brightness);
+//void secondLightChanged(uint8_t brightness);
+//void thirdLightChanged(uint8_t brightness);
+//void fourthLightChanged(uint8_t brightness);
+
+String Device_1_Name = "Room one light";
+String Device_2_Name = "Room two light";
+String Device_3_Name = "Hall light";
+String Device_4_Name = "Bedroom light";
+
+
+
+void firstLightChanged(uint8_t brightness)
+{
+  //Control the device
+  if (brightness)
+  {
+    if (brightness == 255)// on 
+    {
+  
+      Serial.println("**11");
+     // Serial.println("Device1 ON");
+    }
+    //Serial.print("ON, brightness ");
+    //Serial.println(brightness);
+  }
+  else
+  {
+    Serial.println("**10");
+    //Serial.println("Device1 OFF");
+  }
+}
+
+void secondLightChanged(uint8_t brightness)
+{
+
+  //Control the device 
+  if (brightness)
+  {
+    if (brightness == 255)
+    {
+     
+      Serial.println("**21");
+      //Serial.println("Device2 ON");
+    }
+    //Serial.print("ON, brightness ");
+    //Serial.println(brightness);
+  }
+  else
+  {
+    
+    Serial.println("**20");
+    //Serial.println("Device2 OFF");
+  }
+}
+
+void thirdLightChanged(uint8_t brightness)
+{
+
+  //Control the device  
+  if (brightness)
+  {
+    if (brightness == 255)
+    {
+     
+      Serial.println("**31");
+    //  Serial.println("Device3 ON");
+    }
+    //Serial.print("ON, brightness ");
+    //Serial.println(brightness);
+  }
+  else
+  {
+    Serial.println("**30");
+    //Serial.println("Device3 OFF");
+  }
+}
+
+void fourthLightChanged(uint8_t brightness)
+{
+
+  //Control the device 
+  if (brightness)
+  {
+
+    if (brightness == 255)
+    {
+     
+      Serial.println("**41");
+      //Serial.println("Device4 ON");
+    }
+    //Serial.print("ON, brightness ");
+    //Serial.println(brightness);
+  }
+  else
+  {
+   
+    Serial.println("**40");
+    //Serial.println("Device4 OFF");
+  }
+}
+
+
+void EspAlexa(void)
+{
+    espalexa.addDevice(Device_1_Name, firstLightChanged); //simplest definition, default state off
+    espalexa.addDevice(Device_2_Name, secondLightChanged);
+    espalexa.addDevice(Device_3_Name, thirdLightChanged);
+    espalexa.addDevice(Device_4_Name, fourthLightChanged);
+   // espalexa.addDevice(Device_5_Name, fifthLightChanged);
+  //  espalexa.addDevice(Device_6_Name, fourthLightChanged);
+    espalexa.begin();
+
+}
+
+void EspAlexaLoop(void)
+{
+  espalexa.loop(); 
+}
+/************************************ALEXA ENDING*************************************/
+
+   
